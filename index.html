@@ -241,6 +241,7 @@
         function initCalendar() {
             calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
                 initialView: 'timeGridWeek',
+                firstDay: 1,
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
                 events: workspace.events,
                 eventClick: (info) => {
