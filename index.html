@@ -38,7 +38,7 @@
         <div class="bg-white p-3 shadow-sm flex gap-2 items-center shrink-0">
             <input type="password" id="securePin" placeholder="4-Digit PIN" class="w-24 text-sm text-center border rounded">
             <button onclick="loadData()" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-bold">☁️ Load</button>
-            <span id="statusText" class="text-xs text-indigo-600 ml-auto"></span>
+            <span id="statusText" class="text-xs text-indigo-600 ml-auto truncate"></span>
         </div>
 
         <div id="calendar-tab" class="flex-1 relative overflow-hidden flex flex-col">
@@ -65,9 +65,8 @@
 
         <div id="notes-tab" class="hide flex-1 flex flex-col p-4 gap-4">
             <div class="flex gap-2">
-                <button onclick="createNewNote()" class="bg-slate-100 px-4 py-2 rounded text-sm">➕ New Note</button>
-                <button onclick="saveNotesToCloud()" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">☁️ Sync</button>
-                <button onclick="deleteNote()" id="deleteNoteBtn" class="bg-red-100 text-red-600 px-4 py-2 rounded text-sm">🗑️ Delete</button>
+                <button onclick="createNewNote()" class="bg-slate-100 px-4 py-2 rounded text-sm">➕ New</button>
+                <button onclick="saveNotesToCloud()" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Sync</button>
             </div>
             <div id="notesList" class="flex flex-wrap gap-2"></div>
             <input type="text" id="noteTitle" placeholder="Title" class="border p-2">
@@ -76,8 +75,8 @@
     </div>
 
     <div class="w-full h-16 md:w-20 md:h-full bg-indigo-800 flex flex-row md:flex-col items-center justify-around z-50 shrink-0 order-2 md:order-1">
-        <button class="sidebar-btn active" onclick="switchTab('calendar-tab', this)">📅</button>
-        <button class="sidebar-btn" onclick="switchTab('notes-tab', this)">📝</button>
+        <button class="sidebar-btn active" id="btn-calendar" onclick="switchTab('calendar-tab', this)">📅<span class="text-[10px]">Calendar</span></button>
+        <button class="sidebar-btn" id="btn-notes" onclick="switchTab('notes-tab', this)">📝<span class="text-[10px]">Notes</span></button>
     </div>
 
     <script>
@@ -86,10 +85,15 @@
         let calendar, editingEventId = null;
 
         function toggleForm() { document.getElementById('meetingFormDrawer').classList.toggle('translate-x-full'); }
+        
         function switchTab(id, btn) {
-            document.getElementById('calendar-tab').classList.add('hide'); document.getElementById('notes-tab').classList.add('hide');
+            document.getElementById('calendar-tab').classList.add('hide'); 
+            document.getElementById('notes-tab').classList.add('hide');
             document.querySelectorAll('.sidebar-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(id).classList.remove('hide'); btn.classList.add('active');
+            
+            document.getElementById(id).classList.remove('hide'); 
+            btn.classList.add('active');
+            
             if(id === 'calendar-tab') calendar.render();
         }
 
@@ -101,7 +105,7 @@
                 const data = await res.json();
                 workspace = JSON.parse(data.files['workspace.json'].content);
                 calendar.removeAllEvents(); calendar.addEventSource(workspace.events);
-                renderNotesList(); // Reload notes list
+                renderNotesList();
                 document.getElementById('statusText').innerText = "✅ Loaded";
             } catch(e) { document.getElementById('statusText').innerText = "❌ Error"; }
         }
@@ -147,16 +151,8 @@
         }
 
         function saveNotesToCloud() { saveCurrentEditorState(); syncToGithub(); }
-        function deleteNote() { 
-            workspace.notes = workspace.notes.filter(n => n.id !== activeNoteId);
-            activeNoteId = null;
-            document.getElementById('noteTitle').value = '';
-            document.getElementById('noteContent').value = '';
-            renderNotesList();
-            syncToGithub();
-        }
 
-        // Initialize
+        // Calendar Init
         function initCalendar() {
             calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
                 initialView: window.innerWidth < 768 ? 'timeGridDay' : 'timeGridWeek',
