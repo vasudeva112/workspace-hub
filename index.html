@@ -14,9 +14,57 @@
         .note-item.active { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
         input, textarea { @apply border border-slate-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500; }
         button { @apply transition-colors duration-200; }
+        
+        /* Custom scrollbar for notes */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden">
+<body class="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden relative">
+
+    <div id="meetingModal" class="hide fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h2 id="modalTitle" class="text-xl font-bold text-slate-800 leading-tight"></h2>
+                    <p id="modalOrg" class="text-sm font-medium text-indigo-600 mt-1"></p>
+                </div>
+                <button onclick="closeMeetingModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <button id="modalJoinBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    Join Meeting
+                </button>
+                
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500 font-medium">Meeting ID</span>
+                        <div class="flex items-center gap-2 cursor-pointer hover:text-indigo-600 group" onclick="copyText('modalId')">
+                            <span id="modalId" class="font-mono font-bold text-slate-700 group-hover:text-indigo-600"></span>
+                            <span class="text-xs bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">Copy</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-500 font-medium">Password</span>
+                        <div class="flex items-center gap-2 cursor-pointer hover:text-indigo-600 group" onclick="copyText('modalPass')">
+                            <span id="modalPass" class="font-mono font-bold text-slate-700 group-hover:text-indigo-600"></span>
+                            <span class="text-xs bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">Copy</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-slate-100 flex gap-3">
+                <button id="modalEditBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg font-semibold transition-colors">✏️ Edit Details</button>
+            </div>
+        </div>
+    </div>
 
     <div class="w-20 bg-indigo-800 flex flex-col items-center pt-6 shadow-xl z-20 shrink-0">
         <button class="sidebar-btn active" onclick="switchTab('calendar-tab', this)">
@@ -38,9 +86,25 @@
         </div>
 
         <div id="calendar-tab" class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-            <div class="flex gap-6 items-start">
-                <div class="flex-1 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <div id="calendar" class="min-h-[500px]"></div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-4 text-sm shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-slate-700">Calendar Actions:</span>
+                    <button onclick="exportCalendarToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md font-medium shadow-sm flex items-center gap-1">
+                        📊 Export CSV
+                    </button>
+                </div>
+                <div class="flex items-center gap-2 border-l pl-4 border-slate-200">
+                    <span class="text-slate-600 font-medium">Import CSV Matrix:</span>
+                    <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="importCalendarFromCSV(event)">
+                    <button onclick="document.getElementById('csvFileInput').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-semibold border border-slate-300">
+                        📁 Select & Upload File
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex gap-6 items-start h-full">
+                <div class="flex-1 bg-white p-6 rounded-xl shadow-sm border border-slate-200 overflow-y-auto h-[calc(100vh-180px)]">
+                    <div id="calendar" class="min-h-[600px]"></div>
                 </div>
                 
                 <div class="w-80 bg-white p-6 rounded-xl shadow-sm border border-slate-200 shrink-0">
@@ -58,7 +122,7 @@
                         <label class="text-xs text-slate-500 font-semibold mt-1">Series Start Date</label>
                         <input type="date" id="evStartDate">
                         
-                        <label class="text-xs text-slate-500 font-semibold mt-1">Series End Date <span class="font-normal">(Leave blank to repeat forever)</span></label>
+                        <label class="text-xs text-slate-500 font-semibold mt-1">Series End Date <span class="font-normal">(Blank = Infinite)</span></label>
                         <input type="date" id="evEndDate">
                         
                         <div class="flex gap-2">
@@ -121,7 +185,8 @@
         let workspace = { notes: [], events: [] };
         let activeNoteId = null;
         let calendar;
-        let editingEventId = null; // Tracks if we are editing a calendar event
+        let editingEventId = null; 
+        let currentEventInfo = null; // Used for passing data from modal to form
 
         window.onload = () => {
             if(localStorage.getItem('securePin')) document.getElementById('securePin').value = localStorage.getItem('securePin');
@@ -144,6 +209,15 @@
             setTimeout(() => el.innerText = '', 3000);
         }
 
+        // Copy text to clipboard logic for ID/Password
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            if(text && text !== 'N/A') {
+                navigator.clipboard.writeText(text);
+                setStatus("✅ Copied to clipboard!");
+            }
+        }
+
         // --- SECURE API INTEGRATION ---
         async function loadData() {
             const pin = document.getElementById('securePin').value;
@@ -162,6 +236,9 @@
                 const data = await res.json();
                 workspace = JSON.parse(data.files['workspace.json'].content);
                 
+                if(!workspace.notes) workspace.notes = [];
+                if(!workspace.events) workspace.events = [];
+
                 calendar.removeAllEvents();
                 calendar.addEventSource(workspace.events);
                 renderNotesList();
@@ -194,15 +271,54 @@
             }
         }
 
+        // --- MODAL LOGIC ---
+        function openMeetingModal(info) {
+            currentEventInfo = info;
+            const ev = info.event;
+            const props = ev.extendedProps;
+            
+            document.getElementById('modalTitle').innerText = ev.title || 'Untitled Meeting';
+            document.getElementById('modalOrg').innerText = props.org || '';
+            
+            const joinBtn = document.getElementById('modalJoinBtn');
+            if (props.link) {
+                joinBtn.classList.remove('hide');
+                joinBtn.onclick = () => window.open(props.link, '_blank');
+            } else {
+                joinBtn.classList.add('hide');
+            }
+            
+            document.getElementById('modalId').innerText = props.meetingId || 'N/A';
+            document.getElementById('modalPass').innerText = props.password || 'N/A';
+            
+            document.getElementById('meetingModal').classList.remove('hide');
+        }
+
+        function closeMeetingModal() {
+            document.getElementById('meetingModal').classList.add('hide');
+        }
+
+        document.getElementById('modalEditBtn').onclick = () => {
+            closeMeetingModal();
+            loadEventIntoForm(currentEventInfo);
+        };
+
         // --- CALENDAR LOGIC ---
         function initCalendar() {
             calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
                 initialView: 'timeGridWeek',
-                firstDay: 1, // Start week on Monday
+                firstDay: 1, // Start on Monday
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
                 events: workspace.events,
+                
+                // FIX: This forces the calendar to ONLY show your bold title, wrapping nicely to fit the box.
+                eventContent: function(arg) {
+                    return { html: `<div class="font-bold text-xs whitespace-normal leading-tight p-1 overflow-hidden h-full">${arg.event.title}</div>` };
+                },
+
+                // FIX: Opening the new Modal instead of directly editing
                 eventClick: (info) => {
-                    loadEventIntoForm(info);
+                    openMeetingModal(info);
                 }
             });
             calendar.render();
@@ -217,11 +333,9 @@
 
             if(!title || !startDate || !startTime) return alert("Title, Series Start Date, and Time are required.");
 
-            // Extract checked days
             const checkedCb = Array.from(document.querySelectorAll('input[name="evDays"]:checked'));
             const checkedDays = checkedCb.map(cb => parseInt(cb.value));
 
-            // Create recurring event object
             const newEvent = {
                 id: editingEventId || Date.now().toString(),
                 title: title,
@@ -232,7 +346,6 @@
                     link: document.getElementById('evLink').value,
                     meetingId: document.getElementById('evId').value,
                     password: document.getElementById('evPass').value,
-                    // Save raw form values so we can easily edit them later
                     rawStartDate: startDate,
                     rawEndDate: endDate,
                     rawStartTime: startTime,
@@ -241,12 +354,10 @@
                 }
             };
 
-            // Add optional fields only if they exist
             if(endDate) newEvent.endRecur = endDate;
             if(endTime) newEvent.endTime = endTime;
             if(checkedDays.length > 0) newEvent.daysOfWeek = checkedDays;
 
-            // Remove old version if updating
             if (editingEventId) {
                 workspace.events = workspace.events.filter(e => e.id !== editingEventId);
                 const oldEv = calendar.getEventById(editingEventId);
@@ -272,19 +383,16 @@
             document.getElementById('evId').value = props.meetingId || '';
             document.getElementById('evPass').value = props.password || '';
             
-            // Load dates and times from our hidden raw data
             document.getElementById('evStartDate').value = props.rawStartDate || '';
             document.getElementById('evEndDate').value = props.rawEndDate || '';
             document.getElementById('evStartTime').value = props.rawStartTime || '';
             document.getElementById('evEndTime').value = props.rawEndTime || '';
 
-            // Check the boxes
             const days = props.rawDays || [];
             document.querySelectorAll('input[name="evDays"]').forEach(cb => {
                 cb.checked = days.includes(parseInt(cb.value));
             });
 
-            // Update UI buttons
             document.getElementById('saveEventBtn').innerText = "Update";
             document.getElementById('deleteEventBtn').classList.remove('hide');
             document.getElementById('cancelEditBtn').classList.remove('hide');
@@ -311,6 +419,109 @@
             document.getElementById('saveEventBtn').innerText = "Add to Calendar";
             document.getElementById('deleteEventBtn').classList.add('hide');
             document.getElementById('cancelEditBtn').classList.add('hide');
+        }
+
+        // --- CSV EXPORT & IMPORT ENGINE ---
+        function exportCalendarToCSV() {
+            if (!workspace.events || workspace.events.length === 0) {
+                return alert("No calendar events to export!");
+            }
+
+            const headers = ["Title", "Organization", "MeetingLink", "MeetingID", "Password", "SeriesStartDate", "SeriesEndDate", "DailyStartTime", "DailyEndTime", "RepeatDaysOfWeek"];
+            let csvRows = [headers.join(",")];
+
+            workspace.events.forEach(ev => {
+                const p = ev.extendedProps || {};
+                const daysString = p.rawDays ? p.rawDays.join("|") : "";
+
+                const values = [
+                    `"${(ev.title || "").replace(/"/g, '""')}"`,
+                    `"${(p.org || "").replace(/"/g, '""')}"`,
+                    `"${(p.link || "").replace(/"/g, '""')}"`,
+                    `"${(p.meetingId || "").replace(/"/g, '""')}"`,
+                    `"${(p.password || "").replace(/"/g, '""')}"`,
+                    `"${p.rawStartDate || ""}"`,
+                    `"${p.rawEndDate || ""}"`,
+                    `"${p.rawStartTime || ""}"`,
+                    `"${p.rawEndTime || ""}"`,
+                    `"${daysString}"`
+                ];
+                csvRows.push(values.join(","));
+            });
+
+            const csvContent = csvRows.join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.download = 'workspace_calendar_matrix.csv';
+            a.href = url;
+            a.click();
+            setStatus("📊 CSV Exported Successfully");
+        }
+
+        function importCalendarFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/);
+                if (lines.length <= 1) return alert("The selected CSV file is empty.");
+
+                let importedEvents = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue; 
+                    const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(col => col.replace(/^"|"$/g, '').trim());
+                    if (cols.length < 10) continue;
+
+                    const title = cols[0];
+                    const org = cols[1];
+                    const link = cols[2];
+                    const meetingId = cols[3];
+                    const password = cols[4];
+                    const rawStartDate = cols[5];
+                    const rawEndDate = cols[6];
+                    const rawStartTime = cols[7];
+                    const rawEndTime = cols[8];
+                    const daysRaw = cols[9];
+
+                    if (!title || !rawStartDate || !rawStartTime) continue;
+
+                    const parsedDays = daysRaw ? daysRaw.split("|").map(d => parseInt(d)).filter(d => !isNaN(d)) : [];
+
+                    const parsedEvent = {
+                        id: (Date.now() + i).toString(), 
+                        title: title,
+                        startRecur: rawStartDate,
+                        startTime: rawStartTime,
+                        extendedProps: {
+                            org, link, meetingId, password,
+                            rawStartDate, rawEndDate, rawStartTime, rawEndTime,
+                            rawDays: parsedDays
+                        }
+                    };
+
+                    if (rawEndDate) parsedEvent.endRecur = rawEndDate;
+                    if (rawEndTime) parsedEvent.endTime = rawEndTime;
+                    if (parsedDays.length > 0) parsedEvent.daysOfWeek = parsedDays;
+
+                    importedEvents.push(parsedEvent);
+                }
+
+                if (importedEvents.length === 0) return alert("Could not parse any valid events from the CSV matrix.");
+
+                if (confirm(`Successfully parsed ${importedEvents.length} events. Append these to your calendar and sync to cloud?`)) {
+                    workspace.events = workspace.events.concat(importedEvents);
+                    calendar.removeAllEvents();
+                    calendar.addEventSource(workspace.events);
+                    syncToGithub();
+                }
+                
+                document.getElementById('csvFileInput').value = '';
+            };
+            reader.readAsText(file);
         }
 
         // --- NOTES LOGIC ---
