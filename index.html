@@ -2,36 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Workspace Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     <style>
         .hide { display: none !important; }
-        .sidebar-btn { @apply flex flex-col items-center gap-2 w-full py-4 text-sm font-semibold text-indigo-300 hover:text-white hover:bg-white/10 transition-colors; }
-        .sidebar-btn.active { @apply text-white border-l-4 border-white bg-white/10; }
+        /* Adjusted sidebar-btn for mobile bottom-nav vs desktop side-nav */
+        .sidebar-btn { @apply flex flex-col items-center justify-center gap-1 w-full h-full md:py-4 text-xs md:text-sm font-semibold text-indigo-300 hover:text-white hover:bg-white/10 transition-colors; }
+        .sidebar-btn.active { @apply text-white border-t-4 md:border-t-0 md:border-l-4 border-white bg-white/10; }
         .note-item { @apply p-3 border-b border-slate-100 cursor-pointer text-sm truncate hover:bg-slate-50 transition-colors; }
         .note-item.active { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
-        input, textarea { @apply border border-slate-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500; }
+        input, textarea { @apply border border-slate-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm md:text-base; }
         button { @apply transition-colors duration-200; }
         
-        /* Custom scrollbar for notes */
-        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden relative">
+<body class="flex flex-col md:flex-row h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden relative">
 
     <div id="meetingModal" class="hide fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5 md:p-6 border border-slate-200">
             <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h2 id="modalTitle" class="text-xl font-bold text-slate-800 leading-tight"></h2>
+                    <h2 id="modalTitle" class="text-lg md:text-xl font-bold text-slate-800 leading-tight"></h2>
                     <p id="modalOrg" class="text-sm font-medium text-indigo-600 mt-1"></p>
                 </div>
-                <button onclick="closeMeetingModal()" class="text-slate-400 hover:text-slate-600">
+                <button onclick="closeMeetingModal()" class="text-slate-400 hover:text-slate-600 p-1">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
@@ -42,7 +42,7 @@
                     Join Meeting
                 </button>
                 
-                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm space-y-3">
+                <div class="bg-slate-50 p-3 md:p-4 rounded-lg border border-slate-200 text-sm space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-slate-500 font-medium">Meeting ID</span>
                         <div class="flex items-center gap-2 cursor-pointer hover:text-indigo-600 group" onclick="copyText('modalId')">
@@ -66,48 +66,40 @@
         </div>
     </div>
 
-    <div class="w-20 bg-indigo-800 flex flex-col items-center pt-6 shadow-xl z-20 shrink-0">
-        <button class="sidebar-btn active" onclick="switchTab('calendar-tab', this)">
-            <span class="text-2xl">📅</span> Calendar
-        </button>
-        <button class="sidebar-btn" onclick="switchTab('notes-tab', this)">
-            <span class="text-2xl">📝</span> Notes
-        </button>
-    </div>
-
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden order-1 md:order-2">
         
-        <div class="bg-white p-4 shadow-sm flex gap-4 items-center z-10 shrink-0">
-            <input type="password" id="securePin" placeholder="Enter 4-Digit PIN" class="w-48 text-sm font-bold tracking-widest text-center">
-            <button onclick="loadData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm">
-                ☁️ Load Workspace
+        <div class="bg-white p-3 md:p-4 shadow-sm flex flex-wrap gap-2 md:gap-4 items-center z-10 shrink-0">
+            <input type="password" id="securePin" placeholder="4-Digit PIN" class="flex-1 min-w-[120px] md:w-48 text-sm font-bold tracking-widest text-center">
+            <button onclick="loadData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm whitespace-nowrap">
+                ☁️ Load
             </button>
-            <span id="statusText" class="text-sm font-semibold text-indigo-600 ml-auto"></span>
+            <span id="statusText" class="text-xs md:text-sm font-semibold text-indigo-600 ml-auto w-full md:w-auto text-right md:text-left"></span>
         </div>
 
-        <div id="calendar-tab" class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-4 text-sm shrink-0">
-                <div class="flex items-center gap-2">
-                    <span class="font-bold text-slate-700">Calendar Actions:</span>
-                    <button onclick="exportCalendarToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md font-medium shadow-sm flex items-center gap-1">
+        <div id="calendar-tab" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4 md:gap-6">
+            
+            <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-sm shrink-0">
+                <div class="flex items-center gap-2 w-full md:w-auto justify-between">
+                    <span class="font-bold text-slate-700 hidden md:inline">Calendar Actions:</span>
+                    <button onclick="exportCalendarToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md font-medium shadow-sm flex items-center gap-1 w-full md:w-auto justify-center">
                         📊 Export CSV
                     </button>
                 </div>
-                <div class="flex items-center gap-2 border-l pl-4 border-slate-200">
-                    <span class="text-slate-600 font-medium">Import CSV Matrix:</span>
+                <div class="flex items-center gap-2 md:border-l md:pl-4 border-slate-200 w-full md:w-auto">
                     <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="importCalendarFromCSV(event)">
-                    <button onclick="document.getElementById('csvFileInput').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-semibold border border-slate-300">
-                        📁 Select & Upload File
+                    <button onclick="document.getElementById('csvFileInput').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-semibold border border-slate-300 w-full md:w-auto text-center">
+                        📁 Upload CSV
                     </button>
                 </div>
             </div>
 
-            <div class="flex gap-6 items-start h-full">
-                <div class="flex-1 bg-white p-6 rounded-xl shadow-sm border border-slate-200 overflow-y-auto h-[calc(100vh-180px)]">
-                    <div id="calendar" class="min-h-[600px]"></div>
+            <div class="flex flex-col lg:flex-row gap-4 md:gap-6 items-start h-full pb-4">
+                
+                <div class="w-full lg:flex-1 bg-white p-3 md:p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-hidden h-[400px] lg:h-[calc(100vh-220px)]">
+                    <div id="calendar" class="h-full"></div>
                 </div>
                 
-                <div class="w-80 bg-white p-6 rounded-xl shadow-sm border border-slate-200 shrink-0">
+                <div class="w-full lg:w-80 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 shrink-0">
                     <h3 id="formTitle" class="font-bold text-lg mb-4">Add Meeting</h3>
                     <div class="flex flex-col gap-3 text-sm">
                         <input type="text" id="evTitle" placeholder="Meeting Title">
@@ -148,7 +140,7 @@
                         </div>
                         
                         <div class="flex gap-2 mt-2">
-                            <button onclick="saveEvent()" id="saveEventBtn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 rounded-md">Add to Calendar</button>
+                            <button onclick="saveEvent()" id="saveEventBtn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 rounded-md">Add</button>
                             <button onclick="deleteEvent()" id="deleteEventBtn" class="hide flex-1 bg-red-100 text-red-600 hover:bg-red-200 py-2 rounded-md font-medium">Delete</button>
                         </div>
                         <button onclick="resetEventForm()" id="cancelEditBtn" class="hide bg-slate-100 text-slate-600 hover:bg-slate-200 py-2 rounded-md font-medium mt-1">Cancel Edit</button>
@@ -157,36 +149,48 @@
             </div>
         </div>
 
-        <div id="notes-tab" class="hide flex-1 flex p-6 gap-6 overflow-hidden">
-            <div class="w-64 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden shrink-0">
-                <div class="p-4 border-b border-slate-100">
+        <div id="notes-tab" class="hide flex-1 flex flex-col lg:flex-row p-4 md:p-6 gap-4 md:gap-6 overflow-hidden">
+            <div class="w-full lg:w-64 max-h-40 lg:max-h-none bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden shrink-0">
+                <div class="p-3 md:p-4 border-b border-slate-100 shrink-0">
                     <button onclick="createNewNote()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-md text-sm">
                         ➕ New Note
                     </button>
                 </div>
-                <div id="notesList" class="flex-1 overflow-y-auto"></div>
+                <div id="notesList" class="flex-1 overflow-y-auto flex flex-row lg:flex-col"></div>
             </div>
             
-            <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4 min-w-0">
-                <div class="flex gap-4 items-center">
-                    <input type="text" id="noteTitle" placeholder="Note Title..." class="flex-1 text-lg font-bold border-none focus:ring-0 px-0">
-                    <button id="deleteNoteBtn" onclick="deleteNote()" class="hide bg-red-100 text-red-600 hover:bg-red-200 px-3 py-2 rounded-md text-sm font-semibold">🗑️ Delete</button>
-                    <button onclick="downloadNote()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-2 rounded-md text-sm font-semibold">⬇️ Download</button>
-                    <button onclick="saveNotesToCloud()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-semibold shadow-sm">☁️ Sync to Cloud</button>
+            <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6 flex flex-col gap-4 min-w-0">
+                <div class="flex flex-wrap gap-2 md:gap-4 items-center">
+                    <input type="text" id="noteTitle" placeholder="Note Title..." class="flex-1 min-w-[150px] text-base md:text-lg font-bold border-none focus:ring-0 px-0">
+                    <div class="flex gap-2 w-full md:w-auto justify-end">
+                        <button id="deleteNoteBtn" onclick="deleteNote()" class="hide bg-red-100 text-red-600 hover:bg-red-200 px-3 py-2 rounded-md text-sm font-semibold">🗑️</button>
+                        <button onclick="downloadNote()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-2 rounded-md text-sm font-semibold">⬇️</button>
+                        <button onclick="saveNotesToCloud()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-semibold shadow-sm">☁️ Sync</button>
+                    </div>
                 </div>
                 <textarea id="noteContent" placeholder="Write your notes here..." class="flex-1 font-mono text-sm resize-none"></textarea>
             </div>
         </div>
+    </div>
 
+    <div class="w-full h-16 md:w-20 md:h-full bg-indigo-800 flex flex-row md:flex-col items-center justify-around md:justify-start md:pt-6 shadow-xl z-20 shrink-0 order-2 md:order-1">
+        <button class="sidebar-btn active" onclick="switchTab('calendar-tab', this)">
+            <span class="text-xl md:text-2xl">📅</span> <span class="md:hidden">Calendar</span>
+        </button>
+        <button class="sidebar-btn" onclick="switchTab('notes-tab', this)">
+            <span class="text-xl md:text-2xl">📝</span> <span class="md:hidden">Notes</span>
+        </button>
     </div>
 
     <script>
-        // State
         let workspace = { notes: [], events: [] };
         let activeNoteId = null;
         let calendar;
         let editingEventId = null; 
-        let currentEventInfo = null; // Used for passing data from modal to form
+        let currentEventInfo = null;
+
+        // Detect if mobile screen
+        const isMobile = window.innerWidth < 1024;
 
         window.onload = () => {
             if(localStorage.getItem('securePin')) document.getElementById('securePin').value = localStorage.getItem('securePin');
@@ -200,7 +204,9 @@
             
             document.getElementById(tabId).classList.remove('hide');
             btn.classList.add('active');
-            if(tabId === 'calendar-tab') setTimeout(() => calendar.render(), 100);
+            if(tabId === 'calendar-tab' && calendar) {
+                setTimeout(() => { calendar.render(); }, 150);
+            }
         }
 
         function setStatus(msg) {
@@ -209,28 +215,24 @@
             setTimeout(() => el.innerText = '', 3000);
         }
 
-        // Copy text to clipboard logic for ID/Password
         function copyText(elementId) {
             const text = document.getElementById(elementId).innerText;
             if(text && text !== 'N/A') {
                 navigator.clipboard.writeText(text);
-                setStatus("✅ Copied to clipboard!");
+                setStatus("✅ Copied!");
             }
         }
 
-        // --- SECURE API INTEGRATION ---
+        // --- SECURE API ---
         async function loadData() {
             const pin = document.getElementById('securePin').value;
             if(!pin) return alert("Please enter your PIN");
 
             localStorage.setItem('securePin', pin);
-            setStatus("Loading Workspace...");
+            setStatus("Loading...");
 
             try {
-                const res = await fetch('/api/sync', {
-                    headers: { 'x-pin': pin }
-                });
-                
+                const res = await fetch('/api/sync', { headers: { 'x-pin': pin } });
                 if(!res.ok) throw new Error("Wrong PIN");
                 
                 const data = await res.json();
@@ -245,27 +247,24 @@
                 if(workspace.notes.length > 0) openNote(workspace.notes[0].id);
                 else createNewNote();
                 
-                setStatus("✅ Workspace Loaded");
+                setStatus("✅ Loaded");
             } catch(e) {
-                setStatus("❌ Wrong PIN or Server Error");
+                setStatus("❌ Wrong PIN/Error");
             }
         }
 
         async function syncToGithub() {
             const pin = document.getElementById('securePin').value;
-            setStatus("Syncing to Cloud...");
+            setStatus("Syncing...");
 
             try {
                 const res = await fetch('/api/sync', {
                     method: 'POST',
-                    headers: { 
-                        'x-pin': pin,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'x-pin': pin, 'Content-Type': 'application/json' },
                     body: JSON.stringify(workspace) 
                 });
                 if(!res.ok) throw new Error("Sync Failed");
-                setStatus("✅ Synced to Cloud");
+                setStatus("✅ Synced");
             } catch(e) {
                 setStatus("❌ Sync Failed");
             }
@@ -300,23 +299,29 @@
 
         document.getElementById('modalEditBtn').onclick = () => {
             closeMeetingModal();
+            // Scroll to form on mobile
+            if(isMobile) {
+                document.getElementById('calendar-tab').scrollTo({ top: document.getElementById('formTitle').offsetTop, behavior: 'smooth' });
+            }
             loadEventIntoForm(currentEventInfo);
         };
 
         // --- CALENDAR LOGIC ---
         function initCalendar() {
             calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-                initialView: 'timeGridWeek',
-                firstDay: 1, // Start on Monday
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
-                events: workspace.events,
-                
-                // FIX: This forces the calendar to ONLY show your bold title, wrapping nicely to fit the box.
-                eventContent: function(arg) {
-                    return { html: `<div class="font-bold text-xs whitespace-normal leading-tight p-1 overflow-hidden h-full">${arg.event.title}</div>` };
+                // Use list or day view by default on mobile so it doesn't squish columns
+                initialView: isMobile ? 'timeGridDay' : 'timeGridWeek',
+                firstDay: 1, 
+                height: '100%',
+                headerToolbar: { 
+                    left: 'prev,next', 
+                    center: 'title', 
+                    right: isMobile ? 'timeGridDay,listWeek' : 'dayGridMonth,timeGridWeek' 
                 },
-
-                // FIX: Opening the new Modal instead of directly editing
+                events: workspace.events,
+                eventContent: function(arg) {
+                    return { html: `<div class="font-bold text-[10px] md:text-xs whitespace-normal leading-tight p-1 overflow-hidden h-full">${arg.event.title}</div>` };
+                },
                 eventClick: (info) => {
                     openMeetingModal(info);
                 }
@@ -331,7 +336,7 @@
             const startTime = document.getElementById('evStartTime').value;
             const endTime = document.getElementById('evEndTime').value;
 
-            if(!title || !startDate || !startTime) return alert("Title, Series Start Date, and Time are required.");
+            if(!title || !startDate || !startTime) return alert("Title, Series Start Date, and Time required.");
 
             const checkedCb = Array.from(document.querySelectorAll('input[name="evDays"]:checked'));
             const checkedDays = checkedCb.map(cb => parseInt(cb.value));
@@ -367,8 +372,9 @@
             workspace.events.push(newEvent);
             calendar.addEvent(newEvent);
             syncToGithub();
-            
             resetEventForm();
+            
+            if(isMobile) document.getElementById('calendar-tab').scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function loadEventIntoForm(info) {
@@ -400,7 +406,7 @@
 
         function deleteEvent() {
             if (!editingEventId) return;
-            if (!confirm("Are you sure you want to delete this series?")) return;
+            if (!confirm("Delete this series?")) return;
 
             workspace.events = workspace.events.filter(e => e.id !== editingEventId);
             const oldEv = calendar.getEventById(editingEventId);
@@ -416,16 +422,14 @@
             ['evTitle','evOrg','evLink','evId','evPass','evStartDate','evEndDate','evStartTime','evEndTime'].forEach(id => document.getElementById(id).value = '');
             document.querySelectorAll('input[name="evDays"]').forEach(cb => cb.checked = false);
             
-            document.getElementById('saveEventBtn').innerText = "Add to Calendar";
+            document.getElementById('saveEventBtn').innerText = "Add";
             document.getElementById('deleteEventBtn').classList.add('hide');
             document.getElementById('cancelEditBtn').classList.add('hide');
         }
 
-        // --- CSV EXPORT & IMPORT ENGINE ---
+        // --- CSV LOGIC ---
         function exportCalendarToCSV() {
-            if (!workspace.events || workspace.events.length === 0) {
-                return alert("No calendar events to export!");
-            }
+            if (!workspace.events || workspace.events.length === 0) return alert("No events to export!");
 
             const headers = ["Title", "Organization", "MeetingLink", "MeetingID", "Password", "SeriesStartDate", "SeriesEndDate", "DailyStartTime", "DailyEndTime", "RepeatDaysOfWeek"];
             let csvRows = [headers.join(",")];
@@ -435,28 +439,20 @@
                 const daysString = p.rawDays ? p.rawDays.join("|") : "";
 
                 const values = [
-                    `"${(ev.title || "").replace(/"/g, '""')}"`,
-                    `"${(p.org || "").replace(/"/g, '""')}"`,
-                    `"${(p.link || "").replace(/"/g, '""')}"`,
-                    `"${(p.meetingId || "").replace(/"/g, '""')}"`,
-                    `"${(p.password || "").replace(/"/g, '""')}"`,
-                    `"${p.rawStartDate || ""}"`,
-                    `"${p.rawEndDate || ""}"`,
-                    `"${p.rawStartTime || ""}"`,
-                    `"${p.rawEndTime || ""}"`,
+                    `"${(ev.title || "").replace(/"/g, '""')}"`, `"${(p.org || "").replace(/"/g, '""')}"`,
+                    `"${(p.link || "").replace(/"/g, '""')}"`, `"${(p.meetingId || "").replace(/"/g, '""')}"`,
+                    `"${(p.password || "").replace(/"/g, '""')}"`, `"${p.rawStartDate || ""}"`,
+                    `"${p.rawEndDate || ""}"`, `"${p.rawStartTime || ""}"`, `"${p.rawEndTime || ""}"`,
                     `"${daysString}"`
                 ];
                 csvRows.push(values.join(","));
             });
 
-            const csvContent = csvRows.join("\n");
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a');
             a.download = 'workspace_calendar_matrix.csv';
-            a.href = url;
+            a.href = URL.createObjectURL(blob);
             a.click();
-            setStatus("📊 CSV Exported Successfully");
         }
 
         function importCalendarFromCSV(event) {
@@ -465,60 +461,34 @@
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const text = e.target.result;
-                const lines = text.split(/\r?\n/);
-                if (lines.length <= 1) return alert("The selected CSV file is empty.");
+                const lines = e.target.result.split(/\r?\n/);
+                if (lines.length <= 1) return alert("Empty CSV.");
 
                 let importedEvents = [];
-
                 for (let i = 1; i < lines.length; i++) {
                     if (!lines[i].trim()) continue; 
                     const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(col => col.replace(/^"|"$/g, '').trim());
                     if (cols.length < 10) continue;
 
-                    const title = cols[0];
-                    const org = cols[1];
-                    const link = cols[2];
-                    const meetingId = cols[3];
-                    const password = cols[4];
-                    const rawStartDate = cols[5];
-                    const rawEndDate = cols[6];
-                    const rawStartTime = cols[7];
-                    const rawEndTime = cols[8];
-                    const daysRaw = cols[9];
-
-                    if (!title || !rawStartDate || !rawStartTime) continue;
-
-                    const parsedDays = daysRaw ? daysRaw.split("|").map(d => parseInt(d)).filter(d => !isNaN(d)) : [];
-
+                    const parsedDays = cols[9] ? cols[9].split("|").map(d => parseInt(d)).filter(d => !isNaN(d)) : [];
                     const parsedEvent = {
-                        id: (Date.now() + i).toString(), 
-                        title: title,
-                        startRecur: rawStartDate,
-                        startTime: rawStartTime,
-                        extendedProps: {
-                            org, link, meetingId, password,
-                            rawStartDate, rawEndDate, rawStartTime, rawEndTime,
-                            rawDays: parsedDays
-                        }
+                        id: (Date.now() + i).toString(), title: cols[0], startRecur: cols[5], startTime: cols[7],
+                        extendedProps: { org: cols[1], link: cols[2], meetingId: cols[3], password: cols[4], rawStartDate: cols[5], rawEndDate: cols[6], rawStartTime: cols[7], rawEndTime: cols[8], rawDays: parsedDays }
                     };
 
-                    if (rawEndDate) parsedEvent.endRecur = rawEndDate;
-                    if (rawEndTime) parsedEvent.endTime = rawEndTime;
+                    if (cols[6]) parsedEvent.endRecur = cols[6];
+                    if (cols[8]) parsedEvent.endTime = cols[8];
                     if (parsedDays.length > 0) parsedEvent.daysOfWeek = parsedDays;
 
-                    importedEvents.push(parsedEvent);
+                    if(cols[0] && cols[5] && cols[7]) importedEvents.push(parsedEvent);
                 }
 
-                if (importedEvents.length === 0) return alert("Could not parse any valid events from the CSV matrix.");
-
-                if (confirm(`Successfully parsed ${importedEvents.length} events. Append these to your calendar and sync to cloud?`)) {
+                if (importedEvents.length > 0 && confirm(`Append ${importedEvents.length} events?`)) {
                     workspace.events = workspace.events.concat(importedEvents);
                     calendar.removeAllEvents();
                     calendar.addEventSource(workspace.events);
                     syncToGithub();
                 }
-                
                 document.getElementById('csvFileInput').value = '';
             };
             reader.readAsText(file);
@@ -530,7 +500,8 @@
             list.innerHTML = '';
             workspace.notes.forEach(note => {
                 const div = document.createElement('div');
-                div.className = `note-item ${note.id === activeNoteId ? 'active' : ''}`;
+                // Adjust for horizontal scrolling on mobile
+                div.className = `note-item ${note.id === activeNoteId ? 'active' : ''} lg:w-full min-w-[120px] lg:min-w-0 border-r lg:border-r-0 lg:border-b border-slate-100 text-center lg:text-left`;
                 div.innerText = note.title || "Untitled";
                 div.onclick = () => openNote(note.id);
                 list.appendChild(div);
@@ -580,8 +551,7 @@
 
         function downloadNote() {
             const title = document.getElementById('noteTitle').value || 'Note';
-            const content = document.getElementById('noteContent').value;
-            const blob = new Blob([content], { type: 'text/plain' });
+            const blob = new Blob([document.getElementById('noteContent').value], { type: 'text/plain' });
             const a = document.createElement('a');
             a.download = `${title}.txt`;
             a.href = URL.createObjectURL(blob);
