@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workspace Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <style>
+        .hide { display: none !important; }
+        .sidebar-btn { @apply flex flex-col items-center gap-2 w-full py-4 text-sm font-semibold text-indigo-300 hover:text-white hover:bg-white/10 transition-colors; }
+        .sidebar-btn.active { @apply text-white border-l-4 border-white bg-white/10; }
+        .note-item { @apply p-3 border-b border-slate-100 cursor-pointer text-sm truncate hover:bg-slate-50 transition-colors; }
+        .note-item.active { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
+        input, textarea { @apply border border-slate-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500; }
+        button { @apply transition-colors duration-200; }
+    </style>
+</head>
+<body class="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden">
+
+    <div class="w-20 bg-indigo-800 flex flex-col items-center pt-6 shadow-xl z-20 shrink-0">
+        <button class="sidebar-btn active" onclick="switchTab('calendar-tab', this)">
+            <span class="text-2xl">📅</span> Calendar
+        </button>
+        <button class="sidebar-btn" onclick="switchTab('notes-tab', this)">
+            <span class="text-2xl">📝</span> Notes
+        </button>
+    </div>
+
+    <div class="flex-1 flex flex-col overflow-hidden">
+        
+        <div class="bg-white p-4 shadow-sm flex gap-4 items-center z-10 shrink-0">
+            <input type="password" id="ghToken" placeholder="GitHub Token (PIN)" class="w-64 text-sm">
+            <input type="text" id="ghGistId" placeholder="Gist ID" class="w-48 text-sm">
+            <button onclick="loadData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm">
+                ☁️ Load Workspace
+            </button>
+            <span id="statusText" class="text-sm font-semibold text-indigo-600 ml-auto"></span>
+        </div>
+
+        <div id="calendar-tab" class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+            <div class="flex gap-6 items-start">
+                <div class="flex-1 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div id="calendar" class="min-h-[500px]"></div>
+                </div>
+                
+                <div class="w-80 bg-white p-6 rounded-xl shadow-sm border border-slate-200 shrink-0">
+                    <h3 class="font-bold text-lg mb-4">Add Meeting</h3>
+                    <div class="flex flex-col gap-3 text-sm">
+                        <input type="text" id="evTitle" placeholder="Meeting Title">
+                        <input type="text" id="evOrg" placeholder="Organization">
+                        <input type="text" id="evLink" placeholder="Zoom/Teams Link">
+                        <input type="text" id="evId" placeholder="Meeting ID">
+                        <input type="text" id="evPass" placeholder="Password">
+                        <label class="text-xs text-slate-500 font-semibold mt-1">Start Time</label>
+                        <input type="datetime-local" id="evStart">
+                        <label class="text-xs text-slate-500 font-semibold mt-1">End Time</label>
+                        <input type="datetime-local" id="evEnd">
+                        <button onclick="addEvent()" class="mt-2 bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 rounded-md">Add to Calendar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="notes-tab" class="hide flex-1 flex p-6 gap-6 overflow-hidden">
+            <div class="w-64 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden shrink-0">
+                <div class="p-4 border-b border-slate-100">
+                    <button onclick="createNewNote()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-md text-sm">
+                        ➕ New Note
+                    </button>
+                </div>
+                <div id="notesList" class="flex-1 overflow-y-auto"></div>
+            </div>
+            
+            <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col gap-4 min-w-0">
+                <div class="flex gap-4 items-center">
+                    <input type="text" id="noteTitle" placeholder="Note Title..." class="flex-1 text-lg font-bold border-none focus:ring-0 px-0">
+                    <button id="deleteBtn" onclick="deleteNote()" class="hide bg-red-100 text-red-600 hover:bg-red-200 px-3 py-2 rounded-md text-sm font-semibold">🗑️ Delete</button>
+                    <button onclick="downloadNote()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-2 rounded-md text-sm font-semibold">⬇️ Download</button>
+                    <button onclick="saveNotesToCloud()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-semibold shadow-sm">☁️ Sync to Cloud</button>
+                </div>
+                <textarea id="noteContent" placeholder="Write your notes here..." class="flex-1 font-mono text-sm resize-none"></textarea>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // State
+        let workspace = { notes: [], events: [] };
+        let activeNoteId = null;
+        let calendar;
+
+        // Auto-load credentials from local storage
+        window.onload = () => {
+            if(localStorage.getItem('ghToken')) document.getElementById('ghToken').value = localStorage.getItem('ghToken');
+            if(localStorage.getItem('ghGistId')) document.getElementById('ghGistId').value = localStorage.getItem('ghGistId');
+            
+            initCalendar();
+        };
+
+        function switchTab(tabId, btn) {
+            document.getElementById('calendar-tab').classList.add('hide');
+            document.getElementById('notes-tab').classList.add('hide');
+            document.querySelectorAll('.sidebar-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.remove('hide');
+            btn.classList.add('active');
+            if(tabId === 'calendar-tab') setTimeout(() => calendar.render(), 100);
+        }
+
+        function setStatus(msg) {
+            const el = document.getElementById('statusText');
+            el.innerText = msg;
+            setTimeout(() => el.innerText = '', 3000);
+        }
+
+        // --- GITHUB API INTEGRATION ---
+        async function loadData() {
+            const token = document.getElementById('ghToken').value;
+            const gistId = document.getElementById('ghGistId').value;
+            if(!token || !gistId) return alert("Need Token and Gist ID");
+
+            localStorage.setItem('ghToken', token);
+            localStorage.setItem('ghGistId', gistId);
+            setStatus("Fetching from Cloud...");
+
+            try {
+                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if(!res.ok) throw new Error("API Error");
+                const data = await res.json();
+                workspace = JSON.parse(data.files['workspace.json'].content);
+                
+                // Initialize UI
+                calendar.removeAllEvents();
+                calendar.addEventSource(workspace.events);
+                renderNotesList();
+                if(workspace.notes.length > 0) openNote(workspace.notes[0].id);
+                else createNewNote();
+                
+                setStatus("✅ Workspace Loaded");
+            } catch(e) {
+                setStatus("❌ Failed to load. Check Token/ID.");
+            }
+        }
+
+        async function syncToGithub() {
+            const token = document.getElementById('ghToken').value;
+            const gistId = document.getElementById('ghGistId').value;
+            setStatus("Syncing to Cloud...");
+
+            try {
+                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: { 'workspace.json': { content: JSON.stringify(workspace) } }
+                    })
+                });
+                if(!res.ok) throw new Error("Failed");
+                setStatus("✅ Synced to Cloud");
+            } catch(e) {
+                setStatus("❌ Sync Failed");
+            }
+        }
+
+        // --- NOTES LOGIC ---
+        function renderNotesList() {
+            const list = document.getElementById('notesList');
+            list.innerHTML = '';
+            workspace.notes.forEach(note => {
+                const div = document.createElement('div');
+                div.className = `note-item ${note.id === activeNoteId ? 'active' : ''}`;
+                div.innerText = note.title || "Untitled";
+                div.onclick = () => openNote(note.id);
+                list.appendChild(div);
+            });
+        }
+
+        function openNote(id) {
+            // Save current changes to state before switching
+            saveCurrentEditorState();
+            activeNoteId = id;
+            const note = workspace.notes.find(n => n.id === id);
+            document.getElementById('noteTitle').value = note.title;
+            document.getElementById('noteContent').value = note.content;
+            document.getElementById('deleteBtn').classList.remove('hide');
+            renderNotesList();
+        }
+
+        function createNewNote() {
+            saveCurrentEditorState();
+            activeNoteId = Date.now().toString();
+            workspace.notes.unshift({ id: activeNoteId, title: 'New Note', content: '' });
+            openNote(activeNoteId);
+        }
+
+        function saveCurrentEditorState() {
+            if(!activeNoteId) return;
+            const note = workspace.notes.find(n => n.id === activeNoteId);
+            if(note) {
+                note.title = document.getElementById('noteTitle').value;
+                note.content = document.getElementById('noteContent').value;
+            }
+        }
+
+        function saveNotesToCloud() {
+            saveCurrentEditorState();
+            renderNotesList();
+            syncToGithub();
+        }
+
+        function deleteNote() {
+            if(!confirm("Delete note?")) return;
+            workspace.notes = workspace.notes.filter(n => n.id !== activeNoteId);
+            activeNoteId = null;
+            if(workspace.notes.length > 0) openNote(workspace.notes[0].id);
+            else createNewNote();
+            syncToGithub();
+        }
+
+        function downloadNote() {
+            const title = document.getElementById('noteTitle').value || 'Note';
+            const content = document.getElementById('noteContent').value;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.download = `${title}.txt`;
+            a.href = URL.createObjectURL(blob);
+            a.click();
+        }
+
+        // --- CALENDAR LOGIC ---
+        function initCalendar() {
+            calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+                initialView: 'timeGridWeek',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+                events: workspace.events,
+                eventClick: (info) => {
+                    const p = info.event.extendedProps;
+                    alert(`${info.event.title}\nOrg: ${p.org}\nLink: ${p.link}\nID: ${p.meetingId}\nPass: ${p.password}`);
+                }
+            });
+            calendar.render();
+        }
+
+        function addEvent() {
+            const title = document.getElementById('evTitle').value;
+            const start = document.getElementById('evStart').value;
+            const end = document.getElementById('evEnd').value;
+            if(!title || !start || !end) return alert("Need Title, Start, and End");
+
+            const newEvent = {
+                id: Date.now().toString(),
+                title: title,
+                start: start,
+                end: end,
+                extendedProps: {
+                    org: document.getElementById('evOrg').value,
+                    link: document.getElementById('evLink').value,
+                    meetingId: document.getElementById('evId').value,
+                    password: document.getElementById('evPass').value
+                }
+            };
+
+            workspace.events.push(newEvent);
+            calendar.addEvent(newEvent);
+            syncToGithub();
+            
+            ['evTitle','evOrg','evLink','evId','evPass','evStart','evEnd'].forEach(id => document.getElementById(id).value = '');
+        }
+    </script>
+</body>
+</html>
