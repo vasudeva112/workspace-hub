@@ -30,8 +30,7 @@
     <div class="flex-1 flex flex-col overflow-hidden">
         
         <div class="bg-white p-4 shadow-sm flex gap-4 items-center z-10 shrink-0">
-            <input type="password" id="ghToken" placeholder="GitHub Token (PIN)" class="w-64 text-sm">
-            <input type="text" id="ghGistId" placeholder="Gist ID" class="w-48 text-sm">
+            <input type="password" id="securePin" placeholder="Enter 4-Digit PIN" class="w-48 text-sm font-bold tracking-widest text-center">
             <button onclick="loadData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm">
                 ☁️ Load Workspace
             </button>
@@ -115,21 +114,28 @@
             setTimeout(() => el.innerText = '', 3000);
         }
 
-        // --- GITHUB API INTEGRATION ---
-        async function loadData() {
-            const token = document.getElementById('ghToken').value;
-            const gistId = document.getElementById('ghGistId').value;
-            if(!token || !gistId) return alert("Need Token and Gist ID");
+        // Auto-load PIN from local storage
+        window.onload = () => {
+            if(localStorage.getItem('securePin')) document.getElementById('securePin').value = localStorage.getItem('securePin');
+            initCalendar();
+        };
 
-            localStorage.setItem('ghToken', token);
-            localStorage.setItem('ghGistId', gistId);
-            setStatus("Fetching from Cloud...");
+        // --- NEW SECURE API INTEGRATION ---
+        async function loadData() {
+            const pin = document.getElementById('securePin').value;
+            if(!pin) return alert("Please enter your PIN");
+
+            localStorage.setItem('securePin', pin);
+            setStatus("Loading Workspace...");
 
             try {
-                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                // Notice we are fetching from our OWN Vercel API now, not GitHub
+                const res = await fetch('/api/sync', {
+                    headers: { 'x-pin': pin }
                 });
-                if(!res.ok) throw new Error("API Error");
+                
+                if(!res.ok) throw new Error("Wrong PIN");
+                
                 const data = await res.json();
                 workspace = JSON.parse(data.files['workspace.json'].content);
                 
@@ -142,27 +148,24 @@
                 
                 setStatus("✅ Workspace Loaded");
             } catch(e) {
-                setStatus("❌ Failed to load. Check Token/ID.");
+                setStatus("❌ Wrong PIN or Server Error");
             }
         }
 
         async function syncToGithub() {
-            const token = document.getElementById('ghToken').value;
-            const gistId = document.getElementById('ghGistId').value;
+            const pin = document.getElementById('securePin').value;
             setStatus("Syncing to Cloud...");
 
             try {
-                const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-                    method: 'PATCH',
+                const res = await fetch('/api/sync', {
+                    method: 'POST',
                     headers: { 
-                        'Authorization': `Bearer ${token}`,
+                        'x-pin': pin,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        files: { 'workspace.json': { content: JSON.stringify(workspace) } }
-                    })
+                    body: JSON.stringify(workspace) // We just send the workspace, the API handles the GitHub formatting
                 });
-                if(!res.ok) throw new Error("Failed");
+                if(!res.ok) throw new Error("Sync Failed");
                 setStatus("✅ Synced to Cloud");
             } catch(e) {
                 setStatus("❌ Sync Failed");
