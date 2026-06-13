@@ -8,555 +8,158 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
     <style>
         .hide { display: none !important; }
-        /* Adjusted sidebar-btn for mobile bottom-nav vs desktop side-nav */
-        .sidebar-btn { @apply flex flex-col items-center justify-center gap-1 w-full h-full md:py-4 text-xs md:text-sm font-semibold text-indigo-300 hover:text-white hover:bg-white/10 transition-colors; }
+        .sidebar-btn { @apply flex flex-col items-center justify-center gap-1 w-full h-full md:py-4 text-xs font-semibold text-indigo-300 hover:text-white hover:bg-white/10 transition-colors; }
         .sidebar-btn.active { @apply text-white border-t-4 md:border-t-0 md:border-l-4 border-white bg-white/10; }
-        .note-item { @apply p-3 border-b border-slate-100 cursor-pointer text-sm truncate hover:bg-slate-50 transition-colors; }
-        .note-item.active { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
-        input, textarea { @apply border border-slate-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm md:text-base; }
-        button { @apply transition-colors duration-200; }
-        
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        #meetingFormDrawer { transition: transform 0.3s ease-in-out; }
     </style>
 </head>
-<body class="flex flex-col md:flex-row h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden relative">
+<body class="flex flex-col md:flex-row h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden">
 
-    <div id="meetingModal" class="hide fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5 md:p-6 border border-slate-200">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 id="modalTitle" class="text-lg md:text-xl font-bold text-slate-800 leading-tight"></h2>
-                    <p id="modalOrg" class="text-sm font-medium text-indigo-600 mt-1"></p>
-                </div>
-                <button onclick="closeMeetingModal()" class="text-slate-400 hover:text-slate-600 p-1">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+    <div id="meetingModal" class="hide fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <h2 id="modalTitle" class="text-xl font-bold"></h2>
+            <p id="modalOrg" class="text-indigo-600 font-semibold mb-2"></p>
+            <p id="modalRemarks" class="text-sm italic text-slate-600 mb-4"></p>
+            <button id="modalJoinBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg mb-4">Join Meeting</button>
+            <div class="text-sm space-y-1 mb-6">
+                <p>ID: <span id="modalId" class="font-mono font-bold"></span></p>
+                <p>Pass: <span id="modalPass" class="font-mono font-bold"></span></p>
             </div>
-            
-            <div class="space-y-4">
-                <button id="modalJoinBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                    Join Meeting
-                </button>
-                
-                <div class="bg-slate-50 p-3 md:p-4 rounded-lg border border-slate-200 text-sm space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-500 font-medium">Meeting ID</span>
-                        <div class="flex items-center gap-2 cursor-pointer hover:text-indigo-600 group" onclick="copyText('modalId')">
-                            <span id="modalId" class="font-mono font-bold text-slate-700 group-hover:text-indigo-600"></span>
-                            <span class="text-xs bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">Copy</span>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-500 font-medium">Password</span>
-                        <div class="flex items-center gap-2 cursor-pointer hover:text-indigo-600 group" onclick="copyText('modalPass')">
-                            <span id="modalPass" class="font-mono font-bold text-slate-700 group-hover:text-indigo-600"></span>
-                            <span class="text-xs bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">Copy</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-6 pt-4 border-t border-slate-100 flex gap-3">
-                <button id="modalEditBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-lg font-semibold transition-colors">✏️ Edit Details</button>
+            <div class="flex gap-2">
+                <button onclick="closeMeetingModal()" class="flex-1 bg-slate-100 py-2 rounded">Close</button>
+                <button id="modalEditBtn" class="flex-1 bg-indigo-100 text-indigo-700 py-2 rounded">✏️ Edit</button>
             </div>
         </div>
     </div>
 
     <div class="flex-1 flex flex-col overflow-hidden order-1 md:order-2">
-        
-        <div class="bg-white p-3 md:p-4 shadow-sm flex flex-wrap gap-2 md:gap-4 items-center z-10 shrink-0">
-            <input type="password" id="securePin" placeholder="4-Digit PIN" class="flex-1 min-w-[120px] md:w-48 text-sm font-bold tracking-widest text-center">
-            <button onclick="loadData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm shadow-sm whitespace-nowrap">
-                ☁️ Load
-            </button>
-            <span id="statusText" class="text-xs md:text-sm font-semibold text-indigo-600 ml-auto w-full md:w-auto text-right md:text-left"></span>
+        <div class="bg-white p-3 shadow-sm flex gap-2 items-center shrink-0">
+            <input type="password" id="securePin" placeholder="4-Digit PIN" class="w-24 text-sm text-center border rounded">
+            <button onclick="loadData()" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-bold">☁️ Load</button>
+            <span id="statusText" class="text-xs text-indigo-600 ml-auto"></span>
         </div>
 
-        <div id="calendar-tab" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4 md:gap-6">
-            
-            <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-sm shrink-0">
-                <div class="flex items-center gap-2 w-full md:w-auto justify-between">
-                    <span class="font-bold text-slate-700 hidden md:inline">Calendar Actions:</span>
-                    <button onclick="exportCalendarToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md font-medium shadow-sm flex items-center gap-1 w-full md:w-auto justify-center">
-                        📊 Export CSV
-                    </button>
-                </div>
-                <div class="flex items-center gap-2 md:border-l md:pl-4 border-slate-200 w-full md:w-auto">
-                    <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="importCalendarFromCSV(event)">
-                    <button onclick="document.getElementById('csvFileInput').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md font-semibold border border-slate-300 w-full md:w-auto text-center">
-                        📁 Upload CSV
-                    </button>
-                </div>
+        <div id="calendar-tab" class="flex-1 relative overflow-hidden flex flex-col">
+            <div class="flex p-3 gap-2 shrink-0 bg-slate-100">
+                <button onclick="toggleForm()" class="bg-indigo-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow">+ Add Meeting</button>
+                <button onclick="exportCalendarToCSV()" class="text-emerald-700 border border-emerald-700 px-3 py-1 rounded text-sm">📊 Export</button>
+                <input type="file" id="csvFileInput" class="hide" onchange="importCalendarFromCSV(event)">
+                <button onclick="document.getElementById('csvFileInput').click()" class="bg-white border border-slate-300 px-3 py-1 rounded text-sm">📁 Upload</button>
             </div>
+            <div id="calendar" class="flex-1 p-2 bg-white"></div>
 
-            <div class="flex flex-col lg:flex-row gap-4 md:gap-6 items-start h-full pb-4">
-                
-                <div class="w-full lg:flex-1 bg-white p-3 md:p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-hidden h-[400px] lg:h-[calc(100vh-220px)]">
-                    <div id="calendar" class="h-full"></div>
-                </div>
-                
-                <div class="w-full lg:w-80 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200 shrink-0">
-                    <h3 id="formTitle" class="font-bold text-lg mb-4">Add Meeting</h3>
-                    <div class="flex flex-col gap-3 text-sm">
-                        <input type="text" id="evTitle" placeholder="Meeting Title">
-                        <input type="text" id="evOrg" placeholder="Organization">
-                        <input type="text" id="evLink" placeholder="Zoom/Teams Link">
-                        
-                        <div class="flex gap-2">
-                            <input type="text" id="evId" placeholder="Meeting ID" class="flex-1 min-w-0">
-                            <input type="text" id="evPass" placeholder="Password" class="flex-1 min-w-0">
-                        </div>
-                        
-                        <label class="text-xs text-slate-500 font-semibold mt-1">Series Start Date</label>
-                        <input type="date" id="evStartDate">
-                        
-                        <label class="text-xs text-slate-500 font-semibold mt-1">Series End Date <span class="font-normal">(Blank = Infinite)</span></label>
-                        <input type="date" id="evEndDate">
-                        
-                        <div class="flex gap-2">
-                            <div class="flex-1 flex flex-col">
-                                <label class="text-xs text-slate-500 font-semibold mb-1">Time</label>
-                                <input type="time" id="evStartTime">
-                            </div>
-                            <div class="flex-1 flex flex-col">
-                                <label class="text-xs text-slate-500 font-semibold mb-1">To</label>
-                                <input type="time" id="evEndTime">
-                            </div>
-                        </div>
-                        
-                        <label class="text-xs text-slate-500 font-semibold mt-2">Repeats On</label>
-                        <div class="flex gap-1 justify-between mb-2">
-                            <label class="flex flex-col items-center cursor-pointer"><input type="checkbox" name="evDays" value="1" class="mb-1 text-xs">M</label>
-                            <label class="flex flex-col items-center cursor-pointer"><input type="checkbox" name="evDays" value="2" class="mb-1 text-xs">T</label>
-                            <label class="flex flex-col items-center cursor-pointer"><input type="checkbox" name="evDays" value="3" class="mb-1 text-xs">W</label>
-                            <label class="flex flex-col items-center cursor-pointer"><input type="checkbox" name="evDays" value="4" class="mb-1 text-xs">T</label>
-                            <label class="flex flex-col items-center cursor-pointer"><input type="checkbox" name="evDays" value="5" class="mb-1 text-xs">F</label>
-                            <label class="flex flex-col items-center cursor-pointer"><input type="checkbox" name="evDays" value="6" class="mb-1 text-xs">S</label>
-                            <label class="flex flex-col items-center cursor-pointer"><input type="checkbox" name="evDays" value="0" class="mb-1 text-xs">S</label>
-                        </div>
-                        
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="saveEvent()" id="saveEventBtn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 rounded-md">Add</button>
-                            <button onclick="deleteEvent()" id="deleteEventBtn" class="hide flex-1 bg-red-100 text-red-600 hover:bg-red-200 py-2 rounded-md font-medium">Delete</button>
-                        </div>
-                        <button onclick="resetEventForm()" id="cancelEditBtn" class="hide bg-slate-100 text-slate-600 hover:bg-slate-200 py-2 rounded-md font-medium mt-1">Cancel Edit</button>
-                    </div>
+            <div id="meetingFormDrawer" class="absolute top-0 right-0 h-full w-full md:w-80 bg-white z-40 p-6 overflow-y-auto translate-x-full border-l shadow-2xl">
+                <div class="flex justify-between mb-6"><h3 id="formTitle" class="font-bold text-lg">Add Meeting</h3><button onclick="toggleForm()" class="text-xl">✕</button></div>
+                <div class="flex flex-col gap-3 text-sm">
+                    <input type="text" id="evTitle" placeholder="Title">
+                    <input type="text" id="evOrg" placeholder="Org">
+                    <input type="text" id="evLink" placeholder="Link">
+                    <input type="text" id="evId" placeholder="ID">
+                    <input type="text" id="evPass" placeholder="Password">
+                    <textarea id="evRemarks" placeholder="Remarks..." class="h-20"></textarea>
+                    <input type="date" id="evStartDate">
+                    <div class="flex gap-2"><input type="time" id="evStartTime" class="flex-1"><input type="time" id="evEndTime" class="flex-1"></div>
+                    <button onclick="saveEvent()" id="saveEventBtn" class="bg-indigo-600 text-white py-2 rounded">Save</button>
+                    <button onclick="deleteEvent()" id="deleteEventBtn" class="hide bg-red-100 text-red-600 py-2 rounded">Delete</button>
                 </div>
             </div>
         </div>
 
-        <div id="notes-tab" class="hide flex-1 flex flex-col lg:flex-row p-4 md:p-6 gap-4 md:gap-6 overflow-hidden">
-            <div class="w-full lg:w-64 max-h-40 lg:max-h-none bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden shrink-0">
-                <div class="p-3 md:p-4 border-b border-slate-100 shrink-0">
-                    <button onclick="createNewNote()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-md text-sm">
-                        ➕ New Note
-                    </button>
-                </div>
-                <div id="notesList" class="flex-1 overflow-y-auto flex flex-row lg:flex-col"></div>
-            </div>
-            
-            <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-4 md:p-6 flex flex-col gap-4 min-w-0">
-                <div class="flex flex-wrap gap-2 md:gap-4 items-center">
-                    <input type="text" id="noteTitle" placeholder="Note Title..." class="flex-1 min-w-[150px] text-base md:text-lg font-bold border-none focus:ring-0 px-0">
-                    <div class="flex gap-2 w-full md:w-auto justify-end">
-                        <button id="deleteNoteBtn" onclick="deleteNote()" class="hide bg-red-100 text-red-600 hover:bg-red-200 px-3 py-2 rounded-md text-sm font-semibold">🗑️</button>
-                        <button onclick="downloadNote()" class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-2 rounded-md text-sm font-semibold">⬇️</button>
-                        <button onclick="saveNotesToCloud()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-semibold shadow-sm">☁️ Sync</button>
-                    </div>
-                </div>
-                <textarea id="noteContent" placeholder="Write your notes here..." class="flex-1 font-mono text-sm resize-none"></textarea>
-            </div>
+        <div id="notes-tab" class="hide flex-1 flex flex-col p-4 gap-4">
+            <div class="flex gap-2"><button onclick="createNewNote()" class="bg-slate-100 px-4 py-2 rounded text-sm">➕ New</button><button onclick="saveNotesToCloud()" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm">Sync</button></div>
+            <input type="text" id="noteTitle" placeholder="Title" class="border p-2">
+            <textarea id="noteContent" class="flex-1 border p-2 font-mono"></textarea>
         </div>
     </div>
 
-    <div class="w-full h-16 md:w-20 md:h-full bg-indigo-800 flex flex-row md:flex-col items-center justify-around md:justify-start md:pt-6 shadow-xl z-20 shrink-0 order-2 md:order-1">
-        <button class="sidebar-btn active" onclick="switchTab('calendar-tab', this)">
-            <span class="text-xl md:text-2xl">📅</span> <span class="md:hidden">Calendar</span>
-        </button>
-        <button class="sidebar-btn" onclick="switchTab('notes-tab', this)">
-            <span class="text-xl md:text-2xl">📝</span> <span class="md:hidden">Notes</span>
-        </button>
+    <div class="w-full h-16 md:w-20 md:h-full bg-indigo-800 flex flex-row md:flex-col items-center justify-around z-50 shrink-0 order-2 md:order-1">
+        <button class="sidebar-btn active" onclick="switchTab('calendar-tab', this)">📅</button>
+        <button class="sidebar-btn" onclick="switchTab('notes-tab', this)">📝</button>
     </div>
 
     <script>
         let workspace = { notes: [], events: [] };
         let activeNoteId = null;
-        let calendar;
-        let editingEventId = null; 
-        let currentEventInfo = null;
+        let calendar, editingEventId = null, currentEventInfo = null;
 
-        // Detect if mobile screen
-        const isMobile = window.innerWidth < 1024;
-
-        window.onload = () => {
-            if(localStorage.getItem('securePin')) document.getElementById('securePin').value = localStorage.getItem('securePin');
-            initCalendar();
-        };
-
-        function switchTab(tabId, btn) {
-            document.getElementById('calendar-tab').classList.add('hide');
-            document.getElementById('notes-tab').classList.add('hide');
+        function toggleForm() { document.getElementById('meetingFormDrawer').classList.toggle('translate-x-full'); }
+        function switchTab(id, btn) {
+            document.getElementById('calendar-tab').classList.add('hide'); document.getElementById('notes-tab').classList.add('hide');
             document.querySelectorAll('.sidebar-btn').forEach(el => el.classList.remove('active'));
-            
-            document.getElementById(tabId).classList.remove('hide');
-            btn.classList.add('active');
-            if(tabId === 'calendar-tab' && calendar) {
-                setTimeout(() => { calendar.render(); }, 150);
-            }
+            document.getElementById(id).classList.remove('hide'); btn.classList.add('active');
+            if(id === 'calendar-tab') calendar.render();
         }
 
-        function setStatus(msg) {
-            const el = document.getElementById('statusText');
-            el.innerText = msg;
-            setTimeout(() => el.innerText = '', 3000);
-        }
-
-        function copyText(elementId) {
-            const text = document.getElementById(elementId).innerText;
-            if(text && text !== 'N/A') {
-                navigator.clipboard.writeText(text);
-                setStatus("✅ Copied!");
-            }
-        }
-
-        // --- SECURE API ---
         async function loadData() {
             const pin = document.getElementById('securePin').value;
-            if(!pin) return alert("Please enter your PIN");
-
             localStorage.setItem('securePin', pin);
-            setStatus("Loading...");
-
             try {
-                const res = await fetch('/api/sync', { headers: { 'x-pin': pin } });
-                if(!res.ok) throw new Error("Wrong PIN");
-                
+                const res = await fetch('/api/sync', { headers: {'x-pin': pin} });
                 const data = await res.json();
                 workspace = JSON.parse(data.files['workspace.json'].content);
-                
-                if(!workspace.notes) workspace.notes = [];
-                if(!workspace.events) workspace.events = [];
-
-                calendar.removeAllEvents();
-                calendar.addEventSource(workspace.events);
-                renderNotesList();
-                if(workspace.notes.length > 0) openNote(workspace.notes[0].id);
-                else createNewNote();
-                
-                setStatus("✅ Loaded");
-            } catch(e) {
-                setStatus("❌ Wrong PIN/Error");
-            }
+                calendar.removeAllEvents(); calendar.addEventSource(workspace.events);
+                document.getElementById('statusText').innerText = "✅ Loaded";
+            } catch(e) { document.getElementById('statusText').innerText = "❌ Error"; }
         }
 
         async function syncToGithub() {
             const pin = document.getElementById('securePin').value;
-            setStatus("Syncing...");
-
-            try {
-                const res = await fetch('/api/sync', {
-                    method: 'POST',
-                    headers: { 'x-pin': pin, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(workspace) 
-                });
-                if(!res.ok) throw new Error("Sync Failed");
-                setStatus("✅ Synced");
-            } catch(e) {
-                setStatus("❌ Sync Failed");
-            }
+            await fetch('/api/sync', { method: 'POST', headers: {'x-pin': pin, 'Content-Type': 'application/json'}, body: JSON.stringify(workspace) });
+            document.getElementById('statusText').innerText = "✅ Synced";
         }
 
-        // --- MODAL LOGIC ---
-        function openMeetingModal(info) {
-            currentEventInfo = info;
-            const ev = info.event;
-            const props = ev.extendedProps;
-            
-            document.getElementById('modalTitle').innerText = ev.title || 'Untitled Meeting';
-            document.getElementById('modalOrg').innerText = props.org || '';
-            
-            const joinBtn = document.getElementById('modalJoinBtn');
-            if (props.link) {
-                joinBtn.classList.remove('hide');
-                joinBtn.onclick = () => window.open(props.link, '_blank');
-            } else {
-                joinBtn.classList.add('hide');
-            }
-            
-            document.getElementById('modalId').innerText = props.meetingId || 'N/A';
-            document.getElementById('modalPass').innerText = props.password || 'N/A';
-            
-            document.getElementById('meetingModal').classList.remove('hide');
-        }
-
-        function closeMeetingModal() {
-            document.getElementById('meetingModal').classList.add('hide');
-        }
-
-        document.getElementById('modalEditBtn').onclick = () => {
-            closeMeetingModal();
-            // Scroll to form on mobile
-            if(isMobile) {
-                document.getElementById('calendar-tab').scrollTo({ top: document.getElementById('formTitle').offsetTop, behavior: 'smooth' });
-            }
-            loadEventIntoForm(currentEventInfo);
-        };
-
-        // --- CALENDAR LOGIC ---
         function initCalendar() {
             calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-                // Use list or day view by default on mobile so it doesn't squish columns
-                initialView: isMobile ? 'timeGridDay' : 'timeGridWeek',
-                firstDay: 1, 
-                height: '100%',
-                headerToolbar: { 
-                    left: 'prev,next', 
-                    center: 'title', 
-                    right: isMobile ? 'timeGridDay,listWeek' : 'dayGridMonth,timeGridWeek' 
-                },
+                initialView: window.innerWidth < 768 ? 'timeGridDay' : 'timeGridWeek',
+                headerToolbar: { left: 'prev,next', center: 'title', right: '' },
                 events: workspace.events,
-                eventContent: function(arg) {
-                    return { html: `<div class="font-bold text-[10px] md:text-xs whitespace-normal leading-tight p-1 overflow-hidden h-full">${arg.event.title}</div>` };
-                },
-                eventClick: (info) => {
-                    openMeetingModal(info);
-                }
+                eventContent: arg => ({ html: `<div class="font-bold text-xs p-1">${arg.event.title}</div>` }),
+                eventClick: info => { currentEventInfo = info; openMeetingModal(info); }
             });
             calendar.render();
         }
 
+        function openMeetingModal(info) {
+            const ev = info.event; const props = ev.extendedProps;
+            document.getElementById('modalTitle').innerText = ev.title;
+            document.getElementById('modalOrg').innerText = props.org || '';
+            document.getElementById('modalRemarks').innerText = props.remarks || 'No remarks.';
+            document.getElementById('modalJoinBtn').onclick = () => window.open(props.link, '_blank');
+            document.getElementById('modalId').innerText = props.meetingId || 'N/A';
+            document.getElementById('modalPass').innerText = props.password || 'N/A';
+            document.getElementById('meetingModal').classList.remove('hide');
+        }
+
+        function closeMeetingModal() { document.getElementById('meetingModal').classList.add('hide'); }
+        document.getElementById('modalEditBtn').onclick = () => { closeMeetingModal(); toggleForm(); loadEventIntoForm(currentEventInfo); };
+
         function saveEvent() {
-            const title = document.getElementById('evTitle').value;
-            const startDate = document.getElementById('evStartDate').value;
-            const endDate = document.getElementById('evEndDate').value;
-            const startTime = document.getElementById('evStartTime').value;
-            const endTime = document.getElementById('evEndTime').value;
-
-            if(!title || !startDate || !startTime) return alert("Title, Series Start Date, and Time required.");
-
-            const checkedCb = Array.from(document.querySelectorAll('input[name="evDays"]:checked'));
-            const checkedDays = checkedCb.map(cb => parseInt(cb.value));
-
             const newEvent = {
                 id: editingEventId || Date.now().toString(),
-                title: title,
-                startRecur: startDate,
-                startTime: startTime,
+                title: document.getElementById('evTitle').value,
+                startRecur: document.getElementById('evStartDate').value,
+                startTime: document.getElementById('evStartTime').value,
                 extendedProps: {
-                    org: document.getElementById('evOrg').value,
-                    link: document.getElementById('evLink').value,
-                    meetingId: document.getElementById('evId').value,
-                    password: document.getElementById('evPass').value,
-                    rawStartDate: startDate,
-                    rawEndDate: endDate,
-                    rawStartTime: startTime,
-                    rawEndTime: endTime,
-                    rawDays: checkedDays 
+                    org: document.getElementById('evOrg').value, link: document.getElementById('evLink').value,
+                    meetingId: document.getElementById('evId').value, password: document.getElementById('evPass').value,
+                    remarks: document.getElementById('evRemarks').value
                 }
             };
-
-            if(endDate) newEvent.endRecur = endDate;
-            if(endTime) newEvent.endTime = endTime;
-            if(checkedDays.length > 0) newEvent.daysOfWeek = checkedDays;
-
-            if (editingEventId) {
-                workspace.events = workspace.events.filter(e => e.id !== editingEventId);
-                const oldEv = calendar.getEventById(editingEventId);
-                if (oldEv) oldEv.remove();
-            }
-
-            workspace.events.push(newEvent);
-            calendar.addEvent(newEvent);
-            syncToGithub();
-            resetEventForm();
-            
-            if(isMobile) document.getElementById('calendar-tab').scrollTo({ top: 0, behavior: 'smooth' });
+            workspace.events.push(newEvent); calendar.addEvent(newEvent); syncToGithub(); toggleForm();
         }
 
         function loadEventIntoForm(info) {
-            const ev = info.event;
-            const props = ev.extendedProps;
-            editingEventId = ev.id;
-            
-            document.getElementById('formTitle').innerText = "Edit Meeting";
+            const ev = info.event; const props = ev.extendedProps; editingEventId = ev.id;
             document.getElementById('evTitle').value = ev.title;
             document.getElementById('evOrg').value = props.org || '';
             document.getElementById('evLink').value = props.link || '';
             document.getElementById('evId').value = props.meetingId || '';
             document.getElementById('evPass').value = props.password || '';
-            
-            document.getElementById('evStartDate').value = props.rawStartDate || '';
-            document.getElementById('evEndDate').value = props.rawEndDate || '';
-            document.getElementById('evStartTime').value = props.rawStartTime || '';
-            document.getElementById('evEndTime').value = props.rawEndTime || '';
-
-            const days = props.rawDays || [];
-            document.querySelectorAll('input[name="evDays"]').forEach(cb => {
-                cb.checked = days.includes(parseInt(cb.value));
-            });
-
+            document.getElementById('evRemarks').value = props.remarks || '';
             document.getElementById('saveEventBtn').innerText = "Update";
-            document.getElementById('deleteEventBtn').classList.remove('hide');
-            document.getElementById('cancelEditBtn').classList.remove('hide');
         }
 
-        function deleteEvent() {
-            if (!editingEventId) return;
-            if (!confirm("Delete this series?")) return;
-
-            workspace.events = workspace.events.filter(e => e.id !== editingEventId);
-            const oldEv = calendar.getEventById(editingEventId);
-            if (oldEv) oldEv.remove();
-
-            syncToGithub();
-            resetEventForm();
-        }
-
-        function resetEventForm() {
-            editingEventId = null;
-            document.getElementById('formTitle').innerText = "Add Meeting";
-            ['evTitle','evOrg','evLink','evId','evPass','evStartDate','evEndDate','evStartTime','evEndTime'].forEach(id => document.getElementById(id).value = '');
-            document.querySelectorAll('input[name="evDays"]').forEach(cb => cb.checked = false);
-            
-            document.getElementById('saveEventBtn').innerText = "Add";
-            document.getElementById('deleteEventBtn').classList.add('hide');
-            document.getElementById('cancelEditBtn').classList.add('hide');
-        }
-
-        // --- CSV LOGIC ---
-        function exportCalendarToCSV() {
-            if (!workspace.events || workspace.events.length === 0) return alert("No events to export!");
-
-            const headers = ["Title", "Organization", "MeetingLink", "MeetingID", "Password", "SeriesStartDate", "SeriesEndDate", "DailyStartTime", "DailyEndTime", "RepeatDaysOfWeek"];
-            let csvRows = [headers.join(",")];
-
-            workspace.events.forEach(ev => {
-                const p = ev.extendedProps || {};
-                const daysString = p.rawDays ? p.rawDays.join("|") : "";
-
-                const values = [
-                    `"${(ev.title || "").replace(/"/g, '""')}"`, `"${(p.org || "").replace(/"/g, '""')}"`,
-                    `"${(p.link || "").replace(/"/g, '""')}"`, `"${(p.meetingId || "").replace(/"/g, '""')}"`,
-                    `"${(p.password || "").replace(/"/g, '""')}"`, `"${p.rawStartDate || ""}"`,
-                    `"${p.rawEndDate || ""}"`, `"${p.rawStartTime || ""}"`, `"${p.rawEndTime || ""}"`,
-                    `"${daysString}"`
-                ];
-                csvRows.push(values.join(","));
-            });
-
-            const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement('a');
-            a.download = 'workspace_calendar_matrix.csv';
-            a.href = URL.createObjectURL(blob);
-            a.click();
-        }
-
-        function importCalendarFromCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const lines = e.target.result.split(/\r?\n/);
-                if (lines.length <= 1) return alert("Empty CSV.");
-
-                let importedEvents = [];
-                for (let i = 1; i < lines.length; i++) {
-                    if (!lines[i].trim()) continue; 
-                    const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(col => col.replace(/^"|"$/g, '').trim());
-                    if (cols.length < 10) continue;
-
-                    const parsedDays = cols[9] ? cols[9].split("|").map(d => parseInt(d)).filter(d => !isNaN(d)) : [];
-                    const parsedEvent = {
-                        id: (Date.now() + i).toString(), title: cols[0], startRecur: cols[5], startTime: cols[7],
-                        extendedProps: { org: cols[1], link: cols[2], meetingId: cols[3], password: cols[4], rawStartDate: cols[5], rawEndDate: cols[6], rawStartTime: cols[7], rawEndTime: cols[8], rawDays: parsedDays }
-                    };
-
-                    if (cols[6]) parsedEvent.endRecur = cols[6];
-                    if (cols[8]) parsedEvent.endTime = cols[8];
-                    if (parsedDays.length > 0) parsedEvent.daysOfWeek = parsedDays;
-
-                    if(cols[0] && cols[5] && cols[7]) importedEvents.push(parsedEvent);
-                }
-
-                if (importedEvents.length > 0 && confirm(`Append ${importedEvents.length} events?`)) {
-                    workspace.events = workspace.events.concat(importedEvents);
-                    calendar.removeAllEvents();
-                    calendar.addEventSource(workspace.events);
-                    syncToGithub();
-                }
-                document.getElementById('csvFileInput').value = '';
-            };
-            reader.readAsText(file);
-        }
-
-        // --- NOTES LOGIC ---
-        function renderNotesList() {
-            const list = document.getElementById('notesList');
-            list.innerHTML = '';
-            workspace.notes.forEach(note => {
-                const div = document.createElement('div');
-                // Adjust for horizontal scrolling on mobile
-                div.className = `note-item ${note.id === activeNoteId ? 'active' : ''} lg:w-full min-w-[120px] lg:min-w-0 border-r lg:border-r-0 lg:border-b border-slate-100 text-center lg:text-left`;
-                div.innerText = note.title || "Untitled";
-                div.onclick = () => openNote(note.id);
-                list.appendChild(div);
-            });
-        }
-
-        function openNote(id) {
-            saveCurrentEditorState();
-            activeNoteId = id;
-            const note = workspace.notes.find(n => n.id === id);
-            document.getElementById('noteTitle').value = note.title;
-            document.getElementById('noteContent').value = note.content;
-            document.getElementById('deleteNoteBtn').classList.remove('hide');
-            renderNotesList();
-        }
-
-        function createNewNote() {
-            saveCurrentEditorState();
-            activeNoteId = Date.now().toString();
-            workspace.notes.unshift({ id: activeNoteId, title: 'New Note', content: '' });
-            openNote(activeNoteId);
-        }
-
-        function saveCurrentEditorState() {
-            if(!activeNoteId) return;
-            const note = workspace.notes.find(n => n.id === activeNoteId);
-            if(note) {
-                note.title = document.getElementById('noteTitle').value;
-                note.content = document.getElementById('noteContent').value;
-            }
-        }
-
-        function saveNotesToCloud() {
-            saveCurrentEditorState();
-            renderNotesList();
-            syncToGithub();
-        }
-
-        function deleteNote() {
-            if(!confirm("Delete note?")) return;
-            workspace.notes = workspace.notes.filter(n => n.id !== activeNoteId);
-            activeNoteId = null;
-            if(workspace.notes.length > 0) openNote(workspace.notes[0].id);
-            else createNewNote();
-            syncToGithub();
-        }
-
-        function downloadNote() {
-            const title = document.getElementById('noteTitle').value || 'Note';
-            const blob = new Blob([document.getElementById('noteContent').value], { type: 'text/plain' });
-            const a = document.createElement('a');
-            a.download = `${title}.txt`;
-            a.href = URL.createObjectURL(blob);
-            a.click();
-        }
+        initCalendar();
     </script>
 </body>
 </html>
