@@ -21,9 +21,15 @@
             <p id="modalOrg" class="text-indigo-600 font-semibold mb-2"></p>
             <p id="modalRemarks" class="text-sm italic text-slate-600 mb-4"></p>
             <button id="modalJoinBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg mb-4">Join Meeting</button>
-            <div class="text-sm space-y-1 mb-6">
-                <p>ID: <span id="modalId" class="font-mono font-bold"></span></p>
-                <p>Pass: <span id="modalPass" class="font-mono font-bold"></span></p>
+            <div class="text-sm space-y-2 mb-6">
+                <div class="flex justify-between items-center bg-slate-50 p-2 rounded cursor-pointer" onclick="copyText('modalId')">
+                    <p>ID: <span id="modalId" class="font-mono font-bold"></span></p>
+                    <span class="text-[10px] bg-slate-200 px-2 py-0.5 rounded">Copy</span>
+                </div>
+                <div class="flex justify-between items-center bg-slate-50 p-2 rounded cursor-pointer" onclick="copyText('modalPass')">
+                    <p>Pass: <span id="modalPass" class="font-mono font-bold"></span></p>
+                    <span class="text-[10px] bg-slate-200 px-2 py-0.5 rounded">Copy</span>
+                </div>
             </div>
             <div class="flex gap-2">
                 <button onclick="closeMeetingModal()" class="flex-1 bg-slate-100 py-2 rounded">Close</button>
@@ -55,12 +61,11 @@
                     <input type="text" id="evId" placeholder="ID">
                     <input type="text" id="evPass" placeholder="Password">
                     <textarea id="evRemarks" placeholder="Remarks..." class="h-20 border p-2"></textarea>
-                    <label class="flex items-center gap-2 font-semibold">
-                        <input type="checkbox" id="evAlarm" class="w-4 h-4"> Enable 5-min Reminder
-                    </label>
+                    <label class="flex items-center gap-2 font-semibold"><input type="checkbox" id="evAlarm"> 5-min Reminder</label>
                     <input type="date" id="evStartDate">
                     <div class="flex gap-2"><input type="time" id="evStartTime" class="flex-1"><input type="time" id="evEndTime" class="flex-1"></div>
                     <button onclick="saveEvent()" id="saveEventBtn" class="bg-indigo-600 text-white py-2 rounded">Save</button>
+                    <button onclick="deleteEvent()" id="deleteEventBtn" class="hide bg-red-100 text-red-600 py-2 rounded">Delete</button>
                 </div>
             </div>
         </div>
@@ -84,7 +89,7 @@
     <script>
         let workspace = { notes: [], events: [] };
         let activeNoteId = null;
-        let calendar, editingEventId = null;
+        let calendar, editingEventId = null, currentEventInfo = null;
 
         function toggleForm() { document.getElementById('meetingFormDrawer').classList.toggle('translate-x-full'); }
         function switchTab(id, btn) {
@@ -114,36 +119,44 @@
             document.getElementById('statusText').innerText = "✅ Synced";
         }
 
-        // Alarm Monitor
-        setInterval(() => {
-            const now = new Date();
-            const currentMin = now.getHours() * 60 + now.getMinutes();
-            workspace.events.forEach(ev => {
-                if(ev.extendedProps?.alarmEnabled) {
-                    const [h, m] = ev.startTime.split(':').map(Number);
-                    if((h * 60 + m) - currentMin === 5) {
-                        new Notification("Reminder", { body: `Meeting in 5 mins: ${ev.title}` });
-                    }
-                }
-            });
-        }, 60000);
-
-        function saveEvent() {
-            const newEvent = {
-                id: editingEventId || Date.now().toString(),
-                title: document.getElementById('evTitle').value,
-                startRecur: document.getElementById('evStartDate').value,
-                startTime: document.getElementById('evStartTime').value,
-                extendedProps: {
-                    org: document.getElementById('evOrg').value, link: document.getElementById('evLink').value,
-                    meetingId: document.getElementById('evId').value, password: document.getElementById('evPass').value,
-                    remarks: document.getElementById('evRemarks').value,
-                    alarmEnabled: document.getElementById('evAlarm').checked
-                }
-            };
-            workspace.events.push(newEvent); calendar.addEvent(newEvent); syncToGithub(); toggleForm();
+        function copyText(id) {
+            navigator.clipboard.writeText(document.getElementById(id).innerText);
+            setStatus("✅ Copied!");
         }
 
+        function setStatus(m) { document.getElementById('statusText').innerText = m; setTimeout(() => document.getElementById('statusText').innerText = '', 2000); }
+
+        // Notes
+        function renderNotesList() {
+            const list = document.getElementById('notesList'); list.innerHTML = '';
+            workspace.notes.forEach(n => {
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-1 rounded text-xs border ${n.id === activeNoteId ? 'bg-indigo-600 text-white' : 'bg-white'}`;
+                btn.innerText = n.title; btn.onclick = () => openNote(n.id);
+                list.appendChild(btn);
+            });
+        }
+        function openNote(id) {
+            saveCurrentEditorState(); activeNoteId = id;
+            const note = workspace.notes.find(n => n.id === id);
+            document.getElementById('noteTitle').value = note.title;
+            document.getElementById('noteContent').value = note.content;
+            renderNotesList();
+        }
+        function createNewNote() { activeNoteId = Date.now().toString(); workspace.notes.unshift({ id: activeNoteId, title: 'New Note', content: '' }); openNote(activeNoteId); }
+        function saveCurrentEditorState() {
+            if(!activeNoteId) return;
+            const n = workspace.notes.find(n => n.id === activeNoteId);
+            if(n) { n.title = document.getElementById('noteTitle').value; n.content = document.getElementById('noteContent').value; }
+        }
+        function saveNotesToCloud() { saveCurrentEditorState(); syncToGithub(); }
+        function deleteNote() { 
+            workspace.notes = workspace.notes.filter(n => n.id !== activeNoteId);
+            activeNoteId = null; document.getElementById('noteTitle').value = ''; document.getElementById('noteContent').value = '';
+            renderNotesList(); syncToGithub();
+        }
+
+        // Calendar
         function initCalendar() {
             calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
                 initialView: window.innerWidth < 768 ? 'timeGridDay' : 'timeGridWeek',
@@ -151,7 +164,7 @@
                 events: workspace.events,
                 eventContent: arg => ({ html: `<div class="font-bold text-xs p-1">${arg.event.title}</div>` }),
                 eventClick: info => { 
-                    const p = info.event.extendedProps;
+                    currentEventInfo = info; const p = info.event.extendedProps;
                     document.getElementById('modalTitle').innerText = info.event.title;
                     document.getElementById('modalRemarks').innerText = p.remarks || '';
                     document.getElementById('modalJoinBtn').onclick = () => window.open(p.link, '_blank');
@@ -163,8 +176,37 @@
             calendar.render();
         }
 
+        document.getElementById('modalEditBtn').onclick = () => {
+            document.getElementById('meetingModal').classList.add('hide');
+            toggleForm();
+            const ev = currentEventInfo.event; const p = ev.extendedProps;
+            editingEventId = ev.id;
+            document.getElementById('evTitle').value = ev.title;
+            document.getElementById('evOrg').value = p.org || '';
+            document.getElementById('evLink').value = p.link || '';
+            document.getElementById('evId').value = p.meetingId || '';
+            document.getElementById('evPass').value = p.password || '';
+            document.getElementById('evRemarks').value = p.remarks || '';
+            document.getElementById('deleteEventBtn').classList.remove('hide');
+            document.getElementById('saveEventBtn').innerText = "Update";
+        };
+
+        function saveEvent() {
+            const e = {
+                id: editingEventId || Date.now().toString(),
+                title: document.getElementById('evTitle').value,
+                startRecur: document.getElementById('evStartDate').value,
+                startTime: document.getElementById('evStartTime').value,
+                extendedProps: {
+                    org: document.getElementById('evOrg').value, link: document.getElementById('evLink').value,
+                    meetingId: document.getElementById('evId').value, password: document.getElementById('evPass').value,
+                    remarks: document.getElementById('evRemarks').value, alarmEnabled: document.getElementById('evAlarm').checked
+                }
+            };
+            workspace.events.push(e); calendar.addEvent(e); syncToGithub(); toggleForm();
+        }
+        function closeMeetingModal() { document.getElementById('meetingModal').classList.add('hide'); }
         initCalendar();
-        renderNotesList();
     </script>
 </body>
 </html>
